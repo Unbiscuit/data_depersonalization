@@ -43,12 +43,26 @@ def alias_of_site(platform, codes, platforms_for_masking):
 
 
 def local_for_amount_of_ads(amount_of_ads):
-    if amount_of_ads < 33:
+    if amount_of_ads < 10:
         return '1'
-    if 33 <= amount_of_ads <= 66:
+    if 10 <= amount_of_ads < 20:
         return '2'
-    if amount_of_ads > 66:
+    if 20 <= amount_of_ads < 30:
         return '3'
+    if 30 <= amount_of_ads < 40:
+        return '4'
+    if 40 <= amount_of_ads < 50:
+        return '5'
+    if 50 <= amount_of_ads < 60:
+        return '6'
+    if 60 <= amount_of_ads < 70:
+        return '7'
+    if 70 <= amount_of_ads < 80:
+        return '8'
+    if 80 <= amount_of_ads < 90:
+        return '9'
+    if 90 <= amount_of_ads <= 100:
+        return '10'
 
 
 def local_for_adv_time(adv_time):
@@ -90,7 +104,7 @@ def local_for_product(product):
         if random.randrange(1, 3) == 1:
             return 'мех'
         else:
-            return 'смотреть'
+            return 'пить'
 
 
 def count_occurrences(sheet, useful_rows):
