@@ -93,14 +93,14 @@ def local_for_product(product):
             return 'смотреть'
 
 
-def count_occurrences(sheet):
+def count_occurrences(sheet, useful_rows):
     rows = []
     occurrences = []
 
     for index, row in enumerate(sheet.iter_rows(max_col=5, min_row=2)):
         sublist = []
-        for cell in row:
-            sublist.append(cell.value)
+        for cell in useful_rows:
+            sublist.append(row[cell].value)
 
         if sublist not in rows:
             rows.append(sublist)
@@ -133,17 +133,59 @@ def find_not_secure_rows(k, occurrences, rows):
     return not_secure_rows, occurrences, rows
 
 
-def local_suppression(sheet, single_rows):
+def local_suppression(sheet, single_rows, useful_rows):
 
     for i, row in enumerate(sheet.iter_rows(max_col=5, min_row=2)):
         sublist = []
-        for cell in row:
-            sublist.append(cell.value)
+        for cell in useful_rows:
+            sublist.append(row[cell].value)
 
         if sublist in single_rows:
             sheet.move_range(f'A{i+3}:G{sheet.max_row + 1}', rows=-1)
 
     return None
+
+
+def ask_about_column(useful_rows, question, column):
+
+    print(question)
+    answer = input()
+    if answer == 'y':
+        useful_rows.append(column)
+
+    return useful_rows
+
+
+def get_bad_occurrences(k, occurrences):
+
+    bad_occurrences = []
+    every_bad_occurrence = []
+    amount_of_bad_rows = 0
+
+    for i, occurrence in enumerate(occurrences):
+        if occurrence < k and occurrence not in bad_occurrences:
+            bad_occurrences.append(occurrences[i])
+            every_bad_occurrence.append(occurrences[i])
+            amount_of_bad_rows += occurrence
+        if occurrence < k and occurrence in bad_occurrences:
+            amount_of_bad_rows += occurrence
+            for index, occ in enumerate(bad_occurrences):
+                if occ == occurrence:
+                    every_bad_occurrence[index] += occ
+                    break
+
+    return bad_occurrences, every_bad_occurrence,  amount_of_bad_rows
+
+
+def get_single_rows(occurrences, rows):
+
+    single_rows = []
+
+    for i, occurrence in enumerate(occurrences):
+        if occurrence == 1:
+            single_rows.append(rows[i])
+
+    return single_rows
 
 
 def main():
@@ -207,13 +249,29 @@ def main():
 
     if answer == 'y':
 
+        useful_rows = []
+
+        useful_rows = ask_about_column(useful_rows, 'Использовать email при пересчете? y/n', 0)
+        useful_rows = ask_about_column(useful_rows, 'Использовать platform при пересчете? y/n', 1)
+        useful_rows = ask_about_column(useful_rows, 'Использовать amount_of_ads при пересчете? y/n', 2)
+        useful_rows = ask_about_column(useful_rows, 'Использовать duration при пересчете? y/n', 3)
+        useful_rows = ask_about_column(useful_rows, 'Использовать product при пересчете? y/n', 4)
+
         workbook = load_workbook(filename="xlsx/changed_adv.xlsx")
         sheet = workbook.active
 
-        occurrences, rows = count_occurrences(sheet)
+        occurrences, rows = count_occurrences(sheet, useful_rows)
+
         k = count_k_anonymity(occurrences)
 
+        single_rows = get_single_rows(occurrences, rows)
+
         print(f'k-anonymity = {k}')
+
+        if k == 1:
+            print('Строки с k-anonymity = 1')
+            for row in single_rows:
+                print(row)
 
         ifcount = True
 
@@ -229,8 +287,22 @@ def main():
             print('Введите минимальное желаемое k-anonymity: ')
             desired_k = int(input())
 
+            bad_occurrences, every_bad_occurrences, amount_of_bad_rows = get_bad_occurrences(desired_k, occurrences)
+
+            connected_occurrences = zip(bad_occurrences, every_bad_occurrences)
+            new_connected_occurrences = sorted(connected_occurrences, key=lambda tup: tup[0])
+            bad_occurrences = [connected_occurrences[0] for connected_occurrences in new_connected_occurrences]
+            every_bad_occurrences = [connected_occurrences[1] for connected_occurrences in new_connected_occurrences]
+
+            for i, occurrence in enumerate(bad_occurrences):
+                print(f'Будет удалено k = {occurrence}, от набора составляет {every_bad_occurrences[i]/sheet.max_row}')
+                if i == 5:
+                    print('И так далее...')
+
+            print(f'Процент неподходящих строк от основного набора = {amount_of_bad_rows / sheet.max_row}')
+
             unsecure_rows, occurrences, rows = find_not_secure_rows(desired_k, occurrences, rows)
-            local_suppression(sheet, unsecure_rows)
+            local_suppression(sheet, unsecure_rows, useful_rows)
             k = count_k_anonymity(occurrences)
 
             print(f'k-anonymity после подавления = {k}')
